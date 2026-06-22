@@ -56,7 +56,7 @@ fun HistoryScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(CosmicDarkBackground, Color(0xFF1B0C32))
+                    colors = CosmicBackgroundGradient
                 )
             )
     ) {

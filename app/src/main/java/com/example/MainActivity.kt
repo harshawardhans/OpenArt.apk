@@ -22,6 +22,7 @@ import com.example.viewmodel.ArtViewModelFactory
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.example.ui.theme.ThemeManager.initialize(applicationContext)
         enableEdgeToEdge()
         setContent {
             ArtGeneratorTheme {

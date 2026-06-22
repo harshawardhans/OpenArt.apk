@@ -35,6 +35,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -71,13 +73,40 @@ fun HomeScreen(
     )
     var currentTipIndex by remember { mutableStateOf(0) }
     
+    // Smooth progress bar simulation state
+    var simulatedProgress by remember { mutableStateOf(0f) }
+    
+    var showThemeDialog by remember { mutableStateOf(false) }
+    
+    val currentStepText = when {
+        simulatedProgress < 0.15f -> "Analyzing concept parameters..."
+        simulatedProgress < 0.35f -> "Fusing '${selectedStyle}' styles..."
+        simulatedProgress < 0.60f -> "Synthesizing visual resolution..."
+        simulatedProgress < 0.85f -> "Refining aspect ratio layout (${aspectRatio})..."
+        else -> "Applying final deep chromatic polish..."
+    }
+
     LaunchedEffect(generationState) {
         if (generationState is GenerationState.Loading) {
             currentTipIndex = 0
-            while (true) {
-                kotlinx.coroutines.delay(3000)
-                currentTipIndex = (currentTipIndex + 1) % loadingTips.size
+            simulatedProgress = 0f
+            
+            // Launch parallel coroutine for slow tip switching
+            val tipsJob = launch {
+                while (true) {
+                    kotlinx.coroutines.delay(3000)
+                    currentTipIndex = (currentTipIndex + 1) % loadingTips.size
+                }
             }
+            
+            // Progress over time to a max of 97% until loaded
+            while (simulatedProgress < 0.97f) {
+                kotlinx.coroutines.delay(100)
+                val increment = (0.98f - simulatedProgress) * 0.025f
+                simulatedProgress = (simulatedProgress + increment).coerceAtMost(0.97f)
+            }
+            
+            tipsJob.cancel()
         }
     }
 
@@ -86,7 +115,7 @@ fun HomeScreen(
             .fillMaxSize()
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(CosmicDarkBackground, CosmicDarkBackground, Color(0xFF130630))
+                    colors = CosmicBackgroundGradient
                 )
             )
     ) {
@@ -130,6 +159,16 @@ fun HomeScreen(
                 },
                 actions = {
                     IconButton(
+                        onClick = { showThemeDialog = true },
+                        modifier = Modifier.testTag("change_theme_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Palette,
+                            contentDescription = "Change Theme",
+                            tint = TextPrimary
+                        )
+                    }
+                    IconButton(
                         onClick = onNavigateToHistory,
                         modifier = Modifier.testTag("nav_to_history_button")
                     ) {
@@ -159,74 +198,276 @@ fun HomeScreen(
             HorizontalDivider(color = BorderGlow, thickness = 0.5.dp)
 
             if (generationState is GenerationState.Loading) {
-                // RENDER EXTREMELY COOL FUTURISTIC LOADING SCREEN
-                Box(
+                // RENDER EXTREMELY COOL FUTURISTIC SHIMMER SKELETON & PROGRESS LOADER
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                    val shimmerBrush = rememberShimmerBrush()
+                    
+                    // 1. Shimmer Canvas matching active selected aspectRatio
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(
+                                when (aspectRatio) {
+                                    "16:9" -> 1.77f
+                                    "9:16" -> 0.56f
+                                    "3:4" -> 0.75f
+                                    else -> 1f
+                                }
+                            )
+                            .clip(RoundedCornerShape(20.dp))
+                            .border(BorderStroke(1.dp, BorderGlow), RoundedCornerShape(20.dp)),
+                        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
                     ) {
                         Box(
-                            modifier = Modifier.size(200.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(shimmerBrush),
                             contentAlignment = Alignment.Center
                         ) {
-                            val infiniteTransition = rememberInfiniteTransition()
-                            val angle by infiniteTransition.animateFloat(
-                                initialValue = 0f,
-                                targetValue = 360f,
-                                animationSpec = infiniteRepeatable(
-                                    animation = keyframes { durationMillis = 2000 },
-                                    repeatMode = RepeatMode.Restart
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                val infiniteTransition = rememberInfiniteTransition()
+                                val angle by infiniteTransition.animateFloat(
+                                    initialValue = 0f,
+                                    targetValue = 360f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = keyframes { durationMillis = 2000 },
+                                        repeatMode = RepeatMode.Restart
+                                    )
                                 )
-                            )
 
-                            // Double layered spinning arcs
-                            CircularProgressIndicator(
-                                progress = 0.75f,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .rotate(angle),
-                                strokeWidth = 6.dp,
-                                color = PrimaryNeon,
-                                trackColor = BorderGlow
+                                Box(
+                                    modifier = Modifier
+                                        .size(72.dp)
+                                        .rotate(angle),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        progress = 0.4f,
+                                        modifier = Modifier.fillMaxSize(),
+                                        strokeWidth = 4.dp,
+                                        color = PrimaryNeon,
+                                        trackColor = Color.Transparent
+                                    )
+                                    CircularProgressIndicator(
+                                        progress = 0.4f,
+                                        modifier = Modifier
+                                            .size(50.dp)
+                                            .rotate(-angle * 1.8f),
+                                        strokeWidth = 3.dp,
+                                        color = SecondaryCyan,
+                                        trackColor = Color.Transparent
+                                    )
+                                }
+                                Text(
+                                    text = "SYNTHESIZING DIGITAL CANVAS",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White.copy(alpha = 0.85f),
+                                    letterSpacing = 1.2.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = "Preset style: ${selectedStyle.uppercase()}",
+                                    fontSize = 10.sp,
+                                    color = SecondaryCyan,
+                                    fontWeight = FontWeight.SemiBold,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    // 2. Custom Progress Bar showing Simulated Percentage & Stages
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(CosmicCardBackground, RoundedCornerShape(16.dp))
+                            .border(BorderStroke(1.dp, BorderGlow), RoundedCornerShape(16.dp))
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = currentStepText,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
                             )
-                            CircularProgressIndicator(
-                                progress = 0.5f,
-                                modifier = Modifier
-                                    .size(150.dp)
-                                    .rotate(-angle * 1.5f),
-                                strokeWidth = 4.dp,
-                                color = SecondaryCyan,
-                                trackColor = Color.Transparent
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "${(simulatedProgress * 100).toInt()}%",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryNeon
                             )
+                        }
+
+                        // Progress track
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF0F0725))
+                                .border(BorderStroke(0.5.dp, BorderGlow), RoundedCornerShape(6.dp))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(simulatedProgress)
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(PrimaryNeon, SecondaryCyan)
+                                        )
+                                    )
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Loading Tip Cycle text
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Palette,
                                 contentDescription = null,
                                 tint = SecondaryCyan,
-                                modifier = Modifier.size(48.dp)
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = loadingTips[currentTipIndex],
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
+                    }
 
-                        Text(
-                            text = "Forging Masterpiece",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Text(
-                            text = loadingTips[currentTipIndex],
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TextSecondary,
-                            textAlign = TextAlign.Center,
+                    // 3. Shimmer details matching "Artwork Info" Card
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = CosmicCardBackground),
+                        border = BorderStroke(1.dp, BorderGlow),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp)
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = 90.dp, height = 14.dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(shimmerBrush)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = 70.dp, height = 14.dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(shimmerBrush)
+                                )
+                            }
+
+                            // Shimmer lines representing prompt text
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(10.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(shimmerBrush)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.9f)
+                                    .height(10.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(shimmerBrush)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.7f)
+                                    .height(10.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(shimmerBrush)
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            // Metadata details
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = 50.dp, height = 8.dp)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(shimmerBrush)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = 65.dp, height = 8.dp)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(shimmerBrush)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = 40.dp, height = 8.dp)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(shimmerBrush)
+                                )
+                            }
+                        }
+                    }
+
+                    // 4. Shimmer Action buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(shimmerBrush)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(shimmerBrush)
                         )
                     }
                 }
@@ -355,7 +596,7 @@ fun HomeScreen(
                         ) {
                             Icon(Icons.Default.Download, contentDescription = null, tint = Color.White)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Export", color = Color.White)
+                            Text("Download PNG", color = Color.White)
                         }
 
                         Button(
@@ -697,5 +938,195 @@ fun HomeScreen(
                 }
             }
         }
+
+        if (showThemeDialog) {
+            ThemeSelectionDialog(onDismissRequest = { showThemeDialog = false })
+        }
     }
+}
+
+@Composable
+fun ThemeSelectionDialog(
+    onDismissRequest: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = {
+            Text(
+                text = "Interface Palette",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+                modifier = Modifier.testTag("theme_dialog_title")
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                ThemeManager.ThemeType.values().forEach { theme ->
+                    val isSelected = ThemeManager.currentTheme == theme
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { ThemeManager.selectTheme(theme) }
+                            .testTag("theme_option_${theme.name.lowercase()}"),
+                        border = BorderStroke(
+                            width = if (isSelected) 2.dp else 1.dp,
+                            color = if (isSelected) SecondaryCyan else BorderGlow
+                        ),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) CosmicInputBackground else CosmicCardBackground
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Theme Color Swatch Preview
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(theme.primaryColor.copy(alpha = 0.1f))
+                                    .border(BorderStroke(1.dp, theme.primaryColor.copy(alpha = 0.5f)), RoundedCornerShape(8.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                // 2x2 grid of key swatches
+                                Column(
+                                    modifier = Modifier.size(24.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.weight(1f),
+                                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
+                                                .clip(RoundedCornerShape(2.dp))
+                                                .background(theme.primaryColor)
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
+                                                .clip(RoundedCornerShape(2.dp))
+                                                .background(theme.accentColor)
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.weight(1f),
+                                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        val previewBg = if (theme.isDark) Color(0xFF140B27) else Color(0xFFD0D7E0)
+                                        val previewText = if (theme.isDark) Color(0xFFF1EAFF) else Color(0xFF1E293B)
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
+                                                .clip(RoundedCornerShape(2.dp))
+                                                .background(previewBg)
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
+                                                .clip(RoundedCornerShape(2.dp))
+                                                .background(previewText)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Theme Detail
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text(
+                                    text = theme.displayName,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = theme.description,
+                                    fontSize = 11.sp,
+                                    color = TextSecondary,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            // Selection Indicator
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Selected",
+                                    tint = SecondaryCyan,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .border(BorderStroke(1.dp, TextSecondary), RoundedCornerShape(11.dp))
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismissRequest,
+                modifier = Modifier.testTag("theme_dialog_close_button")
+            ) {
+                Text(text = "Close", color = SecondaryCyan, fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = CosmicCardBackground,
+        tonalElevation = 6.dp
+    )
+}
+
+@Composable
+fun rememberShimmerBrush(
+    targetValue: Float = 1000f,
+    durationMillis: Int = 1500
+): Brush {
+    val transition = rememberInfiniteTransition(label = "shimmer_transition")
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = targetValue,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = durationMillis, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_translation"
+    )
+
+    val shimmerColors = listOf(
+        CosmicDarkBackground,
+        CosmicCardBackground,
+        PrimaryNeon.copy(alpha = 0.4f),
+        CosmicCardBackground,
+        CosmicDarkBackground
+    )
+
+    return Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset(translateAnim - 400f, translateAnim - 400f),
+        end = Offset(translateAnim + 400f, translateAnim + 400f)
+    )
 }

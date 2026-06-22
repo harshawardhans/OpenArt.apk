@@ -234,11 +234,11 @@ class ArtViewModel(
 
     fun exportToDeviceGallery(context: Context, artwork: Artwork) {
         viewModelScope.launch {
-            Toast.makeText(context, "Downloading artwork...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Downloading PNG artwork...", Toast.LENGTH_SHORT).show()
             val filename = artwork.prompt.take(15) + "_creation"
             val success = ImageUtils.saveImageToGallery(context, artwork.imageUrl, filename)
             if (success) {
-                Toast.makeText(context, "Exported successfully to Pictures/DigitalArtGenerator!", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Downloaded successfully as PNG to Pictures/DigitalArtGenerator!", Toast.LENGTH_LONG).show()
             } else {
                 Toast.makeText(context, "Download failed. Please check internet connection.", Toast.LENGTH_SHORT).show()
             }

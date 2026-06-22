@@ -53,7 +53,7 @@ fun CommunityScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(CosmicDarkBackground, Color(0xFF0F0429))
+                    colors = CosmicBackgroundGradient
                 )
             )
     ) {

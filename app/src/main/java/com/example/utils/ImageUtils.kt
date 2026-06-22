@@ -47,7 +47,7 @@ object ImageUtils {
 
     private fun insertImageIntoGallery(context: Context, bitmap: Bitmap, title: String): Boolean {
         val resolver = context.contentResolver
-        val filename = "${title.take(30).replace(Regex("[^a-zA-Z0-9]"), "_")}_${System.currentTimeMillis()}.jpg"
+        val filename = "${title.take(30).replace(Regex("[^a-zA-Z0-9]"), "_")}_${System.currentTimeMillis()}.png"
         
         val imageCollection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
@@ -57,7 +57,7 @@ object ImageUtils {
 
         val contentValues = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
             put(MediaStore.Images.Media.TITLE, title)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/DigitalArtGenerator")
@@ -70,7 +70,7 @@ object ImageUtils {
             imageUri = resolver.insert(imageCollection, contentValues) ?: return false
             resolver.openOutputStream(imageUri).use { outputStream ->
                 if (outputStream == null) return false
-                val success = bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                val success = bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
                 if (!success) return false
             }
 
